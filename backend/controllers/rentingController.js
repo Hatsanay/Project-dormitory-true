@@ -76,6 +76,8 @@ const getRenting = async (req, res) => {
     INNER JOIN users on users.user_ID = renting.renting_user_ID
     INNER JOIN room on room.room_ID = renting.renting_room_ID
     INNER JOIN status on status.stat_ID = renting.renting_stat_ID
+    WHERE 
+      renting_stat_ID = "STA000009"
     `;
     const [result] = await db.promise().query(query);
     res.status(200).json(result);
@@ -147,7 +149,7 @@ const getRoomForRenting = async (req, res) => {
       room_Number
     FROM
       room
-    WHERE room_Status_ID = "STA000006"
+    WHERE room_Status_ID = "STA000006" and room_stat_ID = "STA000007"
     `;
     const [result] = await db.promise().query(query);
     res.status(200).json(result);
@@ -158,29 +160,76 @@ const getRoomForRenting = async (req, res) => {
 };
 
 
-//////////////API//////////////
-//////////updatePermission///////////
-///////////////////////////////
-const updatePermission = async (req, res) => {
-  const permission_id= req.query.ID;
-  const { newPermissionName } = req.body;
 
+const updateRoomStatusRenting = async (req, res) => {
+  const { roomID } = req.body;
+  const room_stat_ID = "STA000008";
   try {
-    if (!permission_id) {
-      return res.status(400).json({ error: "โปรดระบุIDสิทธิ์" });
+    if (!roomID) {
+      return res.status(400).json({ error: "กรุณาระบุ roomID " });
     }
-    const [permissionCheck] = await db.promise().query("SELECT * FROM permissions WHERE permission_name = ?", [permission_id]);
-    if (permissionCheck.length === 0) {
-      return res.status(404).json({ error: "ไม่พบข้อมูลสิทธิ์" });
+    const [userCheck] = await db.promise().query("SELECT * FROM room WHERE room_ID = ?", [roomID]);
+    if (userCheck.length === 0) {
+      return res.status(404).json({ error: "ไม่พบข้อมูลห้องพัก" });
     }
+    const updateQuery = "UPDATE room SET room_stat_ID = ? WHERE room_ID = ?";
+    await db.promise().query(updateQuery, [room_stat_ID, roomID]);
 
-    const updateQuery = `
-      UPDATE permissions SET
-        permission_name = ?
-      WHERE permission_id = ?
-    `;
-    await db.promise().query(updateQuery, [newPermissionName, permission_id]);
-    res.status(200).json({ message: "อัปเดตข้อมูลสิทธิ์เรียบร้อยแล้ว" });
+    res.status(200).json({ message: "อัปเดตสถานะของห้องพักเรียบร้อยแล้ว" });
+  } catch (err) {
+    console.error("เกิดข้อผิดพลาดในการอัปเดตสถานะ:", err);
+    res.status(500).json({ error: "เกิดข้อผิดพลาดในการดำเนินการ" });
+  }
+};
+
+const updateRoomStatusCancelRenting = async (req, res) => {
+  const { roomID } = req.body;
+  const room_stat_ID = "STA000007";
+  try {
+    if (!roomID) {
+      return res.status(400).json({ error: "กรุณาระบุ roomID " });
+    }
+    const [userCheck] = await db.promise().query("SELECT * FROM room WHERE room_ID = ?", [roomID]);
+    if (userCheck.length === 0) {
+      return res.status(404).json({ error: "ไม่พบข้อมูลห้องพัก" });
+    }
+    const updateQuery = "UPDATE room SET room_stat_ID = ? WHERE room_ID = ?";
+    await db.promise().query(updateQuery, [room_stat_ID, roomID]);
+
+    res.status(200).json({ message: "อัปเดตสถานะของห้องพักเรียบร้อยแล้ว" });
+  } catch (err) {
+    console.error("เกิดข้อผิดพลาดในการอัปเดตสถานะ:", err);
+    res.status(500).json({ error: "เกิดข้อผิดพลาดในการดำเนินการ" });
+  }
+};
+
+
+// ฟังก์ชันสำหรับอัปเดตสถานะหน่วย
+const updateStatusRenting = async (req, res) => {
+  const { ID, statusID } = req.body; 
+  try {
+    if (!ID || !statusID) {
+      return res.status(400).json({ error: "กรุณาระบุ ID และ statusID" });
+    }
+    const [itemCheck] = await db.promise().query("SELECT * FROM renting WHERE renting_ID = ?", [ID]);
+    if (itemCheck.length === 0) {
+      return res.status(404).json({ error: "ไม่พบข้อมูลสถานะที่ต้องการอัปเดต" });
+    }
+    const updateQuery = "UPDATE renting SET renting_stat_ID = ? WHERE renting_ID = ?";
+    await db.promise().query(updateQuery, [statusID, ID]);
+
+    res.status(200).json({ message: "อัปเดตสถานะการเช่าเรียบร้อยแล้ว" });
+  } catch (err) {
+    console.error("เกิดข้อผิดพลาดในการอัปเดตสถานะการเช่า:", err);
+    res.status(500).json({ error: "เกิดข้อผิดพลาดในการดำเนินการ" });
+  }
+};
+
+const getDeletableRenting = async (req, res) => {
+  try {
+    const query = 'SELECT * FROM status WHERE stat_StatTypID = "STT000004"'; 
+    const [result] = await db.promise().query(query);
+    res.status(200).json(result);
   } catch (err) {
     console.error("เกิดข้อผิดพลาด:", err);
     res.status(500).json({ error: "เกิดข้อผิดพลาดในการดำเนินการ" });
@@ -193,5 +242,9 @@ module.exports = {
   registerRenting,
   getAutoRentingID,
   getUserForRenting,
-  getRoomForRenting
+  getRoomForRenting,
+  updateRoomStatusRenting,
+  updateStatusRenting,
+  getDeletableRenting,
+  updateRoomStatusCancelRenting
 };

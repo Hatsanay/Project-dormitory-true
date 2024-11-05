@@ -146,7 +146,6 @@ const {
   updateStatusRenting,
   getDeletableRenting,
   updateRoomStatusCancelRenting
-
 } = require("../controllers/rentingController");
 
 const {
