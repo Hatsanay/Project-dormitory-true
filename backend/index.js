@@ -7,7 +7,8 @@ require('dotenv').config();
 const path = require('path'); // นำเข้า path library
 
 const app = express();
-const PORT = process.env.PORT || 3030;
+const PORT = process.env.PORT || 3030; //local
+// const PORT = process.env.PORT || 3000; //hosting
 
 app.use(cors()); // เพิ่มการใช้ cors middleware
 app.use(bodyParser.json());

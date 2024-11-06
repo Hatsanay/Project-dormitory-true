@@ -140,7 +140,7 @@ const getStatus = async (req, res) => {
 
 const getStatusUserDelete = async (req, res) => {
     try {
-      const query = 'SELECT * FROM status WHERE stat_stat_ID = "STA000006"';
+      const query = 'SELECT * FROM status WHERE stat_StatTypID = "STT000001"';
       const [result] = await db.promise().query(query);
       res.status(200).json(result);
     } catch (err) {

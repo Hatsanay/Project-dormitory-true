@@ -63,7 +63,7 @@ export default {
   },
   setup(props) {
     const autoID = ref(props.selectedUser?.user_ID || "");
-    const resStatus = ref(props.selectedUser?.stat_Name || "");
+    const resStatus = ref(props.selectedUser?.user_Status_ID || "");
     const statusUser = ref([]);
     const toasts = ref([]);
 
@@ -71,7 +71,7 @@ export default {
       () => props.selectedUser,
       (newUser) => {
         autoID.value = newUser?.user_ID || "";
-        resStatus.value = newUser?.stat_Name || "";
+        resStatus.value = newUser?.user_Status_ID || "";
       },
       { immediate: true }
     );

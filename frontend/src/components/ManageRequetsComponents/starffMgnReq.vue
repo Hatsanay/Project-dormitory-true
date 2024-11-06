@@ -211,7 +211,8 @@ export default {
     };
 
     const getImageUrl = (path) => {
-      return `http://localhost:3030/uploads/${path}`;
+            return `http://localhost:3030/uploads/${path}`; //local
+            // return `https://manageserver.dktimeh.com/uploads/${path}`; //hosting
     };
 
     const showModal = (item) => {

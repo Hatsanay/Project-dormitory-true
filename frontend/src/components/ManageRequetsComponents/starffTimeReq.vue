@@ -226,7 +226,9 @@
           >
             <option value="">เลือกรายการ</option>
             <option v-for="item in items" :key="item.mainr_ID" :value="item.mainr_ID">
-              {{ item.mainr_ProblemTitle }} (ID: {{ item.mainr_ID }})
+              {{ item.mainr_ProblemTitle }} (ID: {{ item.mainr_ID }}) ห้อง:{{
+                item.roomNumber
+              }}
             </option>
           </CFormSelect>
         </div>
@@ -537,6 +539,8 @@ export default {
           title: "มอบหมายงานสำเร็จ",
           text: "ข้อมูลได้ถูกบันทึกแล้ว",
           confirmButtonText: "ตกลง",
+        }).then(() => {
+          window.location.reload();
         });
         closeModal();
       } catch (error) {
@@ -573,7 +577,8 @@ export default {
     };
 
     const getImageUrl = (path) => {
-      return `http://localhost:3030/uploads/${path}`;
+      return `http://localhost:3030/uploads/${path}`; //local
+      // return `https://manageserver.dktimeh.com/uploads/${path}`; //hosting
     };
 
     const switchTab = (tab) => {
@@ -851,6 +856,4 @@ export default {
 .ml-2 {
   margin-left: 10px;
 }
-
-
 </style>
