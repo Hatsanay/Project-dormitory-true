@@ -24,7 +24,8 @@ const getWithdrawReq = async (req, res) => {
 
  GROUP BY requisition_ID
         `;
-
+    //STA000023 = กำลังดำเนินการตรวจสอบ
+    //STA000020 = ยังไม่เบิก
     const [result] = await db.promise().query(query);
     if (result.length === 0) {
       return res.status(404).json({ error: "ไม่พบข้อมูลการแจ้งซ่อม" });
@@ -90,7 +91,9 @@ OR maintenancerequests.mainr_Stat_ID = "STA000013"
 OR maintenancerequests.mainr_Stat_ID = "STA000014"
 AND requisition_ID =  ?
       `;
-
+    //STA000023 = กำลังดำเนินการตรวจสอบ
+    //STA000013 = รอนัด
+    //STA000014 = รอซ่อม
     const [result] = await db.promise().query(query, [RequeiId]);
     if (result.length === 0) {
       return res.status(404).json({ error: "ไม่พบข้อมูลการแจ้งเบิก" });
@@ -118,7 +121,7 @@ AND requisition_ID =  ?
 };
 
 const putReqWithdraw = async (req, res) => {
-  const { requisitionID, Withdrawtatus_ID = "STA000019", mainr_ID } = req.body;
+  const { requisitionID, Withdrawtatus_ID = "STA000019", mainr_ID } = req.body;  //STA000019 = รอเบิก
 
   try {
     if (!requisitionID) {
@@ -173,7 +176,7 @@ const putReqWithdraw = async (req, res) => {
     WHERE mainr_ID = ?
   `;
     await db.promise().query(updatemaintenancerequests, [mainr_ID]);
-
+    //STA000013 = รอนัด
     res.status(200).json({ message: "รับเรื่องเบิกวัสดุเรียบร้อยแล้ว" });
   } catch (err) {
     console.error("เกิดข้อผิดพลาด:", err);
@@ -204,6 +207,9 @@ const getWithdraw = async (req, res) => {
  GROUP BY requisition_ID
         `;
 
+        //STA000013 = รอนัด
+        //STA000014 = รอซ่อม
+        //STA000019 = รอเบิก
     const [result] = await db.promise().query(query);
     if (result.length === 0) {
       return res.status(404).json({ error: "ไม่พบข้อมูลการแจ้งซ่อม" });
@@ -236,7 +242,7 @@ const putAcceptWithdraw = async (req, res) => {
     statusRequisition = "STA000021",
     statusRequisitionList = "STA000021",
   } = req.body;
-
+        //STA000021 = เบิกเสร็จสิ้น
   try {
     if (!requisitionID) {
       return res.status(400).json({ error: "โปรดระบุ requisitionID" });

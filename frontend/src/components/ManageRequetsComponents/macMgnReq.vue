@@ -34,6 +34,17 @@
           กำลังดำเนินการซ่อม
         </a>
       </li>
+      <li class="nav-item">
+        <a
+          class="nav-link"
+          :class="{ active: activeTab === '4' }"
+          @click.prevent="setActiveTab('4')"
+          href="#"
+        >
+          <i class="fa-solid fa-calendar-check"></i>
+          ปฎิทินตารางเวลานัดหมาย
+        </a>
+      </li>
     </ul>
 
     <div class="tab-content mt-3">
@@ -661,13 +672,15 @@
                   {{ item.Type }}
                 </p>
               </div>
-              <div v-if="item.scheduleTime" class="d-flex justify-content-between align-items-center">
-                  <p></p>
-                  <p class="status-modern mb-0">
-                    <strong>เวลานัด:</strong> {{ item.scheduleTime }}
-                  </p>
-                  
-                </div>
+              <div
+                v-if="item.scheduleTime"
+                class="d-flex justify-content-between align-items-center"
+              >
+                <p></p>
+                <p class="status-modern mb-0">
+                  <strong>เวลานัด:</strong> {{ item.scheduleTime }}
+                </p>
+              </div>
               <div class="d-flex justify-content-between align-items-center">
                 <p></p>
                 <p class="status-modern mb-0">
@@ -837,6 +850,9 @@
           <CButton color="secondary" @click="closeDeleteModal">ปิด</CButton>
         </CModalFooter>
       </CModal>
+    </div>
+    <div v-if="activeTab === '4'" class="tab-pane active">
+      <div align="center">ฟีเจอร์กำลังพัฒนา</div>
     </div>
   </div>
 </template>
@@ -1064,6 +1080,7 @@ export default {
         fetchWithdrawRequestsTab2();
       } else if (tab === "3") {
         fetchRequestsTab3();
+      } else if (tab === "4") {
       }
     };
 
@@ -1211,7 +1228,7 @@ export default {
           cancelButtonText: "ยกเลิก",
         }).then((result) => {
           if (result.isConfirmed) {
-            showModelStockAmount(); 
+            showModelStockAmount();
           }
         });
       } else {
@@ -1261,7 +1278,7 @@ export default {
         icon: "success",
       });
 
-      closeModelStockAmount(); 
+      closeModelStockAmount();
     };
 
     const editSelectedStock = (index) => {
@@ -1411,6 +1428,8 @@ export default {
 
     const assessProblemReqTab2 = async (selectedUser) => {};
     const assessProblemReqTab3 = async (selectedUser) => {};
+
+    
 
     onMounted(() => {
       fetchRequestsTab1();

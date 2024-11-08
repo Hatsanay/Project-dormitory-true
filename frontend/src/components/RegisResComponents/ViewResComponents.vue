@@ -206,6 +206,12 @@
 
 
 <script>
+
+
+///ref เก็บค่าที่สามารถติดตามการเปลี่ยนแปลง
+///watch ติดตามการเปลี่ยนแปลงของค่าที่เป็น reactive 
+///onMounted ทำงานเมื่อคอมโพเนนต์ถูกโหลดขึ้นบนหน้าจอครั้งแรก
+///computed ใช้กับข้อมูลที่ต้องคำนวณหรือการประมวลผลซ้ำ ๆ จะอัปเดตค่าใหม่อัตโนมัติเมื่อมีการเปลี่ยนแปลงค่าใด ๆ
 import { ref, watch, onMounted, computed } from "vue";
 import { CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter } from "@coreui/vue";
 import axios from "axios";
@@ -228,6 +234,9 @@ export default {
       return text;
     };
 
+
+
+    ///กำหนดคอลัมป์ตาราง///
     const columns = ref([
       { key: "user_ID", label: "รหัส" },
       { key: "user_Fname", label: "ชื่อ" },
@@ -238,21 +247,30 @@ export default {
       { key: "roleName", label: "ตำแหน่ง" },
     ]);
 
-    const users = ref([]);
-    const roles = ref([]);
-    const searchQuery = ref("");
-    const selectedClass = ref("");
-    const filteredItems = ref([]);
-    const rowsPerPage = ref(10);
-    const currentPage = ref(1);
-    const visibleViewModal = ref(false);
-    const visibleDeleteModal = ref(false);
-    const selectedUser = ref({});
+    const users = ref([]); ///เก็บผู้ใช้ที่ถูกดึงจาก API///
+    const roles = ref([]); ///เก็บตำแหน่งที่ถูกดึงจาก API///
+    const searchQuery = ref(""); ///เก็บข้อความค้นหาที่ผู้ใช้ป้อน///
+    const selectedClass = ref(""); ///เก็บตำแหน่งที่ผู้ใช้เลือก ///
+    const filteredItems = ref([]); ///เก็บข้อมูลผู้ใช้ที่ผ่านการกรอง///
+    const rowsPerPage = ref(10); ///เก็บจำนวนแถวข้อมูลที่จะแสดงในแต่ละหน้า///
+    const currentPage = ref(1); ///เก็บเลขหน้าปัจจุบันของตาราง///
+    const visibleViewModal = ref(false); ///แสดง modal รายละเอียด///
+    const visibleDeleteModal = ref(false); ///แสดง modal ลบ///
+    const selectedUser = ref({}); /// เก็บข้อมูลของผู้ใช้ที่ถูกเลือกเพื่อแสดง modal///
 
+
+    ////////////////////////////
+    ////////คำนวณจำนวนหน้า//////
+    ////////////////////////////
     const totalPages = computed(() => {
+      //ปัดเศษขึ้นให้ได้จำนวนเต็ม(นับจำนวนแถวที่ผ่านการกรองแล้ว/จำนวนหน้าที่จะให้แสดง)
       return Math.ceil(filteredItems.value.length / rowsPerPage.value);
     });
 
+
+    /////////////////////////////
+    /////////ดึงข้อมูลผู้ใช้//////////
+    ////////////////////////////
     const fetchUser = async () => {
       try {
         const token = localStorage.getItem("token");
@@ -272,6 +290,10 @@ export default {
       }
     };
 
+
+    ////////////////////////////
+    ///////ดึงข้อมูลตำแหน่ง////////
+    ////////////////////////////
     const fetchRole = async () => {
       try {
         const token = localStorage.getItem("token");
@@ -293,13 +315,18 @@ export default {
       });
     };
 
+
+    ////////////////////////////
+    /////////ค้นหา User//////////
+    ////////////////////////////
     const filterItems = () => {
       filteredItems.value = users.value
         .filter((item) => {
-          const matchesClass = selectedClass.value
-            ? item.roleName === selectedClass.value
-            : true;
+          const matchesClass = selectedClass.value ///ผู้ใช้เลือกกรองตามตำแหน่งไหม///
+            ? item.roleName === selectedClass.value ///หากมีจะเปรียบเทียบ///
+            : true; ///หากไม่มีให้เป็น true
 
+          ///ค้นหาว่าตรงกับค่าฟิลด์ใดๆของผู้ใช้หรือไม่///
           const matchesSearch =
             item.user_ID?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
             item.user_Fname?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
@@ -315,12 +342,20 @@ export default {
         });
     };
 
+
+    
+    ////////////////////////////
+    /////แสดง Modal รายละเอียด///
+    ////////////////////////////
     const showModal = (item) => {
       selectedUser.value = item;
       visibleViewModal.value = true;
       console.log("View Modal Opened:", visibleViewModal.value);
     };
 
+    ////////////////////////////
+    ///////แสดง Modal ลบ////////
+    ////////////////////////////
     const showModalDelete = (item) => {
       selectedUser.value = item;
       visibleDeleteModal.value = true;
@@ -338,12 +373,20 @@ export default {
       fetchUser();
     };
 
+
+    /////////////////////////////
+    ////////แบ่งแถวแต่ละหน้า///////
+    ////////////////////////////
     const paginatedItems = computed(() => {
-      const start = (currentPage.value - 1) * rowsPerPage.value;
-      const end = start + rowsPerPage.value;
-      return filteredItems.value.slice(start, end);
+      const start = (currentPage.value - 1) * rowsPerPage.value; //หาแถวแรก
+      const end = start + rowsPerPage.value; //หาแถวสุดท้าย
+      return filteredItems.value.slice(start, end); //เลือกข้อมูลเฉพาะช่วงที่ต้องการ
     });
 
+    
+    /////////////////////////////
+    /////////////หน้าปัจจุบัน///////
+    ////////////////////////////
     const setPage = (page) => {
       currentPage.value = page;
     };

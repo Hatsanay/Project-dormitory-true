@@ -45,6 +45,10 @@ GROUP BY
 ORDER BY
     maintenancerequests.mainr_ID ASC;
     `;
+    //STA000017 = ยกเลิกการแจ้งซ่อม
+    //STA000016 = เสร็จสิ้น
+    //STA000018 = เจ้าหน้าที่ปฎิเสธคำร้อง
+
 
     const [result] = await db.promise().query(query, [userId]);
 
@@ -107,6 +111,9 @@ const getHisReqById = async (req, res) => {
       ORDER BY
         maintenancerequests.mainr_ID ASC
     `;
+    //STA000017 = ยกเลิกการแจ้งซ่อม
+    //STA000016 = เสร็จสิ้น
+    //STA000018 = เจ้าหน้าที่ปฎิเสธคำร้อง
 
     const [result] = await db.promise().query(query, [userId]);
 
@@ -270,6 +277,8 @@ const submitRepairRequest = async (req, res) => {
         "STA000011",
       ]);
 
+    //STA000011 = รอนิติบุคคลตรวจสอบ
+    
     if (files && files.length > 0) {
       const imageQuery = `
         INSERT INTO imagerequests (imges_ID, imges_Path, image_mainr_ID)
@@ -339,7 +348,8 @@ const getImgById = async (req, res) => {
 //////////cancelReq///////////
 ///////////////////////////////
 const cancelReq = async (req, res) => {
-  const { mainr_ID, mainrstatus_ID = "STA000017" } = req.body;
+    
+  const { mainr_ID, mainrstatus_ID = "STA000017" } = req.body;  //STA000017 = ยกเลิกการแจ้งซ่อม
 
   try {
     if (!mainr_ID) {
@@ -362,7 +372,7 @@ const cancelReq = async (req, res) => {
 };
 
 const successReq = async (req, res) => {
-  const { mainr_ID, mainrstatus_ID = "STA000016" } = req.body;
+  const { mainr_ID, mainrstatus_ID = "STA000016" } = req.body; //STA000016 = เสร็จสิ้น
 
   try {
     if (!mainr_ID) {
@@ -405,6 +415,7 @@ const getroomByID = async (req, res) => {
       renting_user_ID = ?
       AND renting_stat_ID = "STA000009"
     `;
+    //STA000009 = เช่า
 
     const [result] = await db.promise().query(query, [userID]);
 

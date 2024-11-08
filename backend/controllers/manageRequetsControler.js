@@ -24,6 +24,7 @@ const getReq = async (req, res) => {
     ORDER BY
       maintenancerequests.mainr_ID ASC
     `;
+    //STA000011 = รอนิติบุคคลตรวจสอบ
 
     const [result] = await db.promise().query(query);
     if (result.length === 0) {
@@ -52,7 +53,7 @@ const getReq = async (req, res) => {
 };
 
 const denyReq = async (req, res) => {
-  const { mainr_ID, mainrstatus_ID = "STA000018" } = req.body;
+  const { mainr_ID, mainrstatus_ID = "STA000018" } = req.body; //STA000018 = เจ้าหน้าที่ปฎิเสธคำร้อง
 
   try {
     if (!mainr_ID) {
@@ -75,7 +76,7 @@ const denyReq = async (req, res) => {
 };
 
 const sendtomacReq = async (req, res) => {
-  const { mainr_ID, mainrstatus_ID = "STA000012" } = req.body;
+  const { mainr_ID, mainrstatus_ID = "STA000012" } = req.body; //STA000012 = รอเจ้าหน้าที่ซ่อมบำรุงตรวจสอบ
 
   try {
     if (!mainr_ID) {
@@ -122,6 +123,7 @@ const getMacReq = async (req, res) => {
       ORDER BY
         maintenancerequests.mainr_ID ASC
     `;
+    //STA000012 = รอเจ้าหน้าที่ซ่อมบำรุงตรวจสอบ
 
     const [result] = await db.promise().query(query);
     if (result.length === 0) {
@@ -181,6 +183,7 @@ const getMacReqById = async (req, res) => {
     ORDER BY
       maintenancerequests.mainr_ID ASC
     `;
+    //STA000012 = รอเจ้าหน้าที่ซ่อมบำรุงตรวจสอบ
 
     const [result] = await db.promise().query(query);
 
@@ -302,6 +305,7 @@ const submitRequisition = async (req, res) => {
       "STA000020", // สถานะเริ่มต้น "ยังไม่เบิก"
     ]);
 
+
     // บันทึกข้อมูลในตาราง reqlist (รายละเอียดการเบิก)
     const insertReqlistQuery = `
       INSERT INTO requisition_list (reqlist_order, reqlist_stock_ID, reqlist_requisition_ID, quantity , reqlist_stat_ID)
@@ -336,6 +340,7 @@ const submitRequisition = async (req, res) => {
 
       await db.promise().query(updateQuery, [ "STA000023", requisition_mainr_ID]);
     }
+    //STA000023 = กำลังดำเนินการตรวจสอบ
 
     res.status(201).json({ message: "บันทึกข้อมูลการเบิกวัสดุสำเร็จ" });
   } catch (error) {
@@ -389,6 +394,9 @@ ORDER BY
     maintenancerequests.mainr_ID ASC;
 
     `;
+    //STA000014 = รอซ่อม
+    //STA000015 = กำลังดำเนินการซ่อม
+
 
     const [result] = await db.promise().query(query, [userId]);
 
@@ -431,6 +439,9 @@ const getStatusReq = async (req, res) => {
     res.status(500).json({ error: "เกิดข้อผิดพลาดในการดำเนินการ" });
   }
 };
+    //STA000014 = รอซ่อม
+    //STA000015 = กำลังดำเนินการซ่อม
+    //STA000016 = เสร็จสิ้น
 
 const updateStatusReq = async (req, res) => {
   const { mainr_ID, mainrstatus_ID } = req.body;

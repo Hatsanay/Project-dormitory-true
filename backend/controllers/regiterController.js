@@ -294,7 +294,8 @@ const updateUser = async (req, res) => {
     }
 
     // ตรวจสอบว่า username ที่ส่งมาใหม่ซ้ำกับ user ไหม
-    if (username && username !== userCheck[0].user_Name) {
+    if (username && username !== userCheck[0].user_Name) { //ตรวจสอบว่า username เดิม ซ้ำกับ username ที่ส่งมาไหม
+      //ดึงข้อมูล ผู้ใช้ที่มี username เหมือนกัน
       const [usernameCheck] = await db.promise().query("SELECT * FROM users WHERE user_Name = ?", [username]);
       if (usernameCheck.length > 0) {
         return res.status(400).json({ error: "มี Username นี้อยู่แล้ว" });

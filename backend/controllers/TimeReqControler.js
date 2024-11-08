@@ -100,7 +100,7 @@ const getReqwaitForShc = async (req, res) => {
     ORDER BY
       maintenancerequests.mainr_ID ASC
     `;
-
+    //STA000013 = รอนัด
     const [result] = await db.promise().query(query,);
 
     if (result.length === 0) {
@@ -128,33 +128,58 @@ const getReqwaitForShc = async (req, res) => {
   }
 };
 
+const checkScheduleConflict = async (technician, date, startTime, endTime) => {
+  const query = `
+    SELECT * FROM schedulerepairs
+    INNER JOIN scheculerepairsn_list ON scheculerepairsn_list.srl_sdr_ID = schedulerepairs.ID
+    WHERE srl_user_ID = ? 
+      AND Date = ? 
+      AND (
+        (startTime < ? AND endTime > ?) OR 
+        (startTime >= ? AND startTime < ?) OR
+        (endTime > ? AND endTime <= ?)
+      )
+  `;
+  const [result] = await db.promise().query(query, [technician, date, endTime, startTime, startTime, endTime, startTime, endTime]);
+  return result.length > 0; // คืนค่า true ถ้าพบว่ามีตารางทับซ้อน
+};
+
+
+// ปรับปรุงฟังก์ชัน assignWork
 const assignWork = async (req, res) => {
   try {
     const { repairID, technician, assistants, date, startTime, endTime } = req.body;
 
+    // ตรวจสอบความซ้ำซ้อนสำหรับช่างหลัก
+    if (await checkScheduleConflict(technician, date, startTime, endTime)) {
+      return res.status(400).json({ error: "เวลานัดหมายของช่างหลักทับซ้อนกับงานอื่น" });
+    }
+
+    // ตรวจสอบความซ้ำซ้อนสำหรับผู้ช่วยช่าง
+    for (const assistant of assistants) {
+      if (await checkScheduleConflict(assistant, date, startTime, endTime)) {
+        return res.status(400).json({ error: `เวลานัดหมายของผู้ช่วยทับซ้อนกับงานอื่น` });
+      }
+    }
+
+    // สร้าง scheduleID ใหม่
     const query = "SELECT ID FROM schedulerepairs ORDER BY ID DESC LIMIT 1";
     const [result] = await db.promise().query(query);
-    let maxId;
-    if (result.length === 0) {
-      maxId = 0; // กรณีที่ยังไม่มีข้อมูลในตาราง
-    } else {
-      const lastScheduleId = result[0].ID; // รหัสแถวสุดท้าย
-      maxId = parseInt(lastScheduleId.slice(-6)) || 0; // แปลงสตริงให้เป็นเลข 6 หลักสุดท้าย
-    }
-    const num = maxId + 1; // เพิ่มค่า ID ที่ได้มาอีก 1
-    const scheduleID = "SCH" + String(num).padStart(6, "0"); // เติมเลข 0 ด้านหน้าให้ครบ 6 หลัก
+    let maxId = result.length === 0 ? 0 : parseInt(result[0].ID.slice(-6)) || 0;
+    const scheduleID = "SCH" + String(maxId + 1).padStart(6, "0");
 
+    // เพิ่มข้อมูลการนัดหมายใน schedulerepairs
     const insertScheduleQuery = `
       INSERT INTO schedulerepairs (ID, Date, startTime, endTime, sdr_mainr_ID)
       VALUES (?, ?, ?, ?, ?)
     `;
     await db.promise().query(insertScheduleQuery, [scheduleID, date, startTime, endTime, repairID]);
 
+    // บันทึกช่างหลักและผู้ช่วยใน scheculerepairsn_list
     const insertTechnicianQuery = `
       INSERT INTO scheculerepairsn_list (Order_MN, srl_sdr_ID, srl_user_ID)
       VALUES (?, ?, ?)
     `;
-
     await db.promise().query(insertTechnicianQuery, [1, scheduleID, technician]);
 
     for (let i = 0; i < assistants.length; i++) {
@@ -167,7 +192,7 @@ const assignWork = async (req, res) => {
       WHERE mainr_ID = ?
     `;
     await db.promise().query(updateStatusQuery, [repairID]);
-
+    //STA000014 = รอซ่อม
     res.status(201).json({ message: "การมอบหมายงานสำเร็จ" });
   } catch (err) {
     console.error("เกิดข้อผิดพลาด:", err);
@@ -176,5 +201,44 @@ const assignWork = async (req, res) => {
 };
 
 
+const getTechnicianAppointments = async (req, res) => {
+  const technicianID = req.query.technicianID;
+  if (!technicianID) {
+    return res.status(400).json({ error: "กรุณาระบุรหัสช่าง" });
+  }
 
-module.exports = { getreqtime,getMacForShc,getReqwaitForShc,assignWork };
+  try {
+    const query = `
+      SELECT Date, startTime, endTime 
+      FROM schedulerepairs 
+      INNER JOIN scheculerepairsn_list ON scheculerepairsn_list.srl_sdr_ID = schedulerepairs.ID 
+      WHERE scheculerepairsn_list.srl_user_ID = ? 
+      ORDER BY Date, startTime;
+    `;
+    const [appointments] = await db.promise().query(query, [technicianID]);
+
+    // ฟอร์แมตข้อมูลให้อยู่ในรูปแบบที่ FullCalendar ต้องการ
+    const formattedAppointments = appointments.map((appointment) => {
+      const date = new Date(appointment.Date).toISOString().split("T")[0]; // แปลงวันที่ให้เป็นรูปแบบ YYYY-MM-DD
+      const start = `${date}T${appointment.startTime}`;
+      const end = `${date}T${appointment.endTime}`;
+      return {
+        title: "มีการนัดหมาย",
+        start,
+        end,
+        color: "#dc3545",
+      };
+    });
+
+    res.status(200).json(formattedAppointments);
+  } catch (err) {
+    console.error("เกิดข้อผิดพลาด:", err);
+    res.status(500).json({ error: "เกิดข้อผิดพลาดในการดึงข้อมูลการนัดหมาย" });
+  }
+};
+
+
+
+
+
+module.exports = { getreqtime,getMacForShc,getReqwaitForShc,assignWork,getTechnicianAppointments };

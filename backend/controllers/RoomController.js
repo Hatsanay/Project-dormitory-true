@@ -6,11 +6,11 @@ require("dotenv").config();
 ///////////////////////////////
 const registerRoom = async (req, res) => {
   const {
-    roomnumber
+    roomnumber, roomtype, roomfloor, Air
   } = req.body;
 
   try {
-    ////////////Autoid/////////////
+    //////////// Autoid /////////////
     const query = "SELECT room_ID FROM room ORDER BY room_ID DESC LIMIT 1";
     const [result] = await db.promise().query(query);
     let maxId;
@@ -23,50 +23,79 @@ const registerRoom = async (req, res) => {
     const num = maxId + 1;
     const roomID = "ROM" + String(num).padStart(6, "0");
 
-    const Roomchecked = await checkRoom(roomnumber);
-    if (Roomchecked) {
-      return res.status(400).json({ error: "มีเลขห้องนี้อยู่แล้ว" });
+    const query2 = "SELECT floor_name FROM floor WHERE floor_ID = ?";
+    const [result2] = await db.promise().query(query2, [roomfloor]);
+    
+    if (result2.length === 0) {
+      throw new Error("No floor found with the given ID");
     }
-    const room_stat_ID= "STA000007";
-    const room_status_ID= "STA000006";
-    ///////บันทึกลงฐานข้อมูล//////////
+
+    const floor = result2[0].floor_name;
+    const roomforcheck = `${floor}${roomnumber}`;
+    const Roomchecked = await checkRoom(roomforcheck);
+
+    if (Roomchecked) {
+      return res.status(400).json({ error: "ชั้นนี้มีเลขห้องนี้อยู่แล้ว" });
+    }
+    const room_stat_ID = "STA000007";
+    const room_status_ID = "STA000006";
+
+    /////// บันทึกลงฐานข้อมูล ///////
     const insertQuery = `
       INSERT INTO room
-      (room_ID, room_Number, room_stat_ID,room_status_ID)
-      VALUES (?, ?, ?,?)
+      (room_ID, room_floor, room_Number, room_Type, room_stat_ID, room_status_ID)
+      VALUES (?, ?, ?, ?, ?, ?)
     `;
-    await db
-      .promise()
-      .query(insertQuery, [
-        roomID,
-        roomnumber,
-        room_stat_ID,
-        room_status_ID
-      ]);
+    await db.promise().query(insertQuery, [
+      roomID,
+      roomfloor,
+      roomforcheck,
+      roomtype,
+      room_stat_ID,
+      room_status_ID
+    ]);
+    res.status(201).json({ message: "ลงทะเบียนห้องพักสำเร็จ" });
+        // ตรวจสอบและเพิ่มข้อมูลใน roomair หาก roomtype เท่ากับ RTY000001 และมีค่า Air ที่กำหนด
+        if (roomtype === "RTY000001" && Air) {
+          const insertQuery2 = `
+            INSERT INTO roomair
+            (room_ID,Air_ID)
+            VALUES (?,?)
+          `;
+          await db.promise().query(insertQuery2, [roomID, Air]);
 
-    res.status(201).json({ message: "ลงทะเบียนห้องพักเรียบร้อยแล้ว!" });
+          const statusair = "STA000025"; //เปลี่ยนสถานะเป็นใช้
+          const insertQuery3 = `
+            UPDATE airconditioner SET
+            status = ?
+            WHERE air_ID = ?
+          `;
+          await db.promise().query(insertQuery3, [statusair, Air]);
+        }
   } catch (err) {
     console.error("เกิดข้อผิดพลาด:", err);
     res.status(500).json({ error: "เกิดข้อผิดพลาดในการดำเนินการ" });
   }
 };
 
-///////////function/////////////
-////////////////////////////////
-async function checkRoom(roomnumber) {
+/////////// function checkRoom ///////////
+async function checkRoom(roomforcheck) {
   try {
-    const query = "SELECT COUNT(*) as count FROM room WHERE room_Number = ?";
-    const [rows] = await db.promise().query(query, [roomnumber]);
+    const query = `
+      SELECT COUNT(*) AS count 
+      FROM room 
+      JOIN floor ON room.room_floor = floor.floor_ID 
+      WHERE room.room_Number = ?
+    `;
+    const [rows] = await db.promise().query(query, [roomforcheck]);
     return rows[0].count > 0;
   } catch (err) {
-    console.error("ไม่สามารถตรวจสอบ room_Numberได้:", err);
+    console.error("ไม่สามารถตรวจสอบได้:", err);
     throw err;
   }
 }
 
-//////////////API//////////////
-///////////getAutotid///////////
-///////////////////////////////
+////////////// API: getAutotidRoom //////////////
 const getAutotidRoom = async (req, res) => {
   try {
     const query = "SELECT room_ID FROM room ORDER BY room_ID DESC LIMIT 1";
@@ -87,24 +116,50 @@ const getAutotidRoom = async (req, res) => {
   }
 };
 
+
 //////////////API/////////////
 /////////getRoom//////////////
 ///////////////////////////////
 const getRoom = async (req, res) => {
   try {
     const query = `SELECT
-      room_ID, 
-      room_Number, 
-      status.stat_Name ,
-      sta.stat_Name AS status,
-      room.room_status_ID 
-    FROM
-      room
-    INNER JOIN
-      status ON room.room_stat_ID = status.stat_ID
-    INNER JOIN
-      status sta ON room.room_status_ID = sta.stat_ID
-    WHERE room_status_ID = "STA000006"
+    room.room_ID, 
+    room.room_Number, 
+    room.room_Number AS room,
+    floor.floor_name,
+    room.room_floor,
+    roomType.roomType_name,
+    room.room_Type,
+    status.stat_Name AS room_stat_Name,
+    sta.stat_Name AS room_status_Name,
+    room.room_status_ID,
+    Air.BrandModel
+FROM
+    room
+INNER JOIN
+    roomType ON room.room_Type = roomType.roomType_ID
+INNER JOIN
+    floor ON room.room_floor = floor.floor_ID
+INNER JOIN
+    status ON room.room_stat_ID = status.stat_ID
+INNER JOIN
+    status AS sta ON room.room_status_ID = sta.stat_ID
+LEFT JOIN
+    roomair ON roomair.room_ID = room.room_ID
+LEFT JOIN (
+    SELECT  
+        airconditioner.air_ID, 
+        CONCAT(m.Name, ' ', b.Name, ' ', airconditioner.serial) AS BrandModel,
+        airconditioner.waranty,
+        airconditioner.serial,
+        airconditioner.status
+    FROM 
+        airconditioner
+    LEFT JOIN model AS m ON airconditioner.model = m.ID
+    LEFT JOIN Brand AS b ON m.Brand = b.ID
+    LEFT JOIN status AS s ON airconditioner.status = s.stat_ID
+) AS Air ON roomair.air_ID = Air.air_ID
+WHERE room.room_status_ID = "STA000006";
     `;
     const [result] = await db.promise().query(query);
     res.status(200).json(result);
@@ -125,14 +180,45 @@ const getRoomByNumber = async (req, res) => {
     }
     const query = ` 
       SELECT
-        room_ID, 
-        room_Number, 
-        room_stat_ID,
-        room_status_ID
-      FROM
-        room
+    room.room_ID, 
+    room.room_Number, 
+    room.room_Number AS room,
+    floor.floor_name,
+    room.room_floor,
+    roomType.roomType_name,
+    room.room_Type,
+    status.stat_Name AS room_stat_Name,
+    sta.stat_Name AS room_status_Name,
+    room.room_status_ID,
+    Air.BrandModel,
+    Air.air_ID
+FROM
+    room
+INNER JOIN
+    roomType ON room.room_Type = roomType.roomType_ID
+INNER JOIN
+    floor ON room.room_floor = floor.floor_ID
+INNER JOIN
+    status ON room.room_stat_ID = status.stat_ID
+INNER JOIN
+    status AS sta ON room.room_status_ID = sta.stat_ID
+LEFT JOIN
+    roomair ON roomair.room_ID = room.room_ID
+LEFT JOIN (
+    SELECT  
+        airconditioner.air_ID, 
+        CONCAT(m.Name, ' ', b.Name, ' ', airconditioner.serial) AS BrandModel,
+        airconditioner.waranty,
+        airconditioner.serial,
+        airconditioner.status
+    FROM 
+        airconditioner
+    LEFT JOIN model AS m ON airconditioner.model = m.ID
+    LEFT JOIN Brand AS b ON m.Brand = b.ID
+    LEFT JOIN status AS s ON airconditioner.status = s.stat_ID
+) AS Air ON roomair.air_ID = Air.air_ID
       WHERE
-        room_ID = ?
+        room.room_ID = ?
     `;
     const [result] = await db.promise().query(query, [roomID]);
     if (result.length === 0) {
@@ -150,7 +236,7 @@ const getRoomByNumber = async (req, res) => {
 ///////////////////////////////
 const updateRoom = async (req, res) => {
   const roomID = req.query.ID;
-  const { roomnumber } = req.body;
+  const { roomnumber,roomtype,selectAir,roomfloor} = req.body;
 
   try {
     if (!roomID) {
@@ -160,17 +246,95 @@ const updateRoom = async (req, res) => {
     if (userCheck.length === 0) {
       return res.status(404).json({ error: "ไม่พบข้อมูลห้อง" });
     }
-    const Roomchecked = await checkRoom(roomnumber);
-    if (Roomchecked) {
-      return res.status(400).json({ error: "มีเลขห้องนี้อยู่แล้ว" });
+    const query2 = "SELECT floor_name FROM floor WHERE floor_ID = ?";
+    const [result2] = await db.promise().query(query2, [roomfloor]);
+    
+    if (result2.length === 0) {
+      throw new Error("No floor found with the given ID");
     }
+
+    const floor = result2[0].floor_name;
+    const roomforcheck = `${floor}${roomnumber}`;
+
     const updateQuery = `
       UPDATE room SET
-        room_Number = ? 
+        room_Number = ? ,
+        room_Type = ?
       WHERE room_ID = ?
     `;
-    await db.promise().query(updateQuery, [roomnumber,roomID]);
+    await db.promise().query(updateQuery, [roomforcheck,roomtype,roomID]);
     res.status(200).json({ message: "อัปเดตข้อมูลห้องพักเรียบร้อยแล้ว" });
+
+    if (roomtype === "RTY000001" && selectAir) {
+      const checkQuery = `
+        SELECT COUNT(*) AS count , air_ID
+        FROM roomair
+        WHERE room_ID = ?;
+      `;
+      const [result] = await db.promise().query(checkQuery, [roomID]);
+    //ถ้ามีข้อมูลอยู่เเล้วให้ อัพเดต เเอร์ใหม่่ๆ
+      if (result[0].count > 0) {
+        const oldair = result[0].air_ID
+        const updateQuery = `
+          UPDATE roomair SET
+          air_ID = ?
+          WHERE room_ID = ?;
+        `;
+        await db.promise().query(updateQuery, [selectAir, roomID]);
+      //เปลี่ยนสถานะแอร์ใหม่ด้วย
+      const statusair = "STA000025"; //เปลี่ยนสถานะเป็นใช้
+      const updatQuery3 = `
+        UPDATE airconditioner SET
+        status = ?
+        WHERE air_ID = ?
+      `;
+      await db.promise().query(updatQuery3, [statusair, selectAir]);
+
+      //เปลี่ยนสถานะแอร์เก่าด้วย
+      const statusairold = "STA000026"; //เปลี่ยนสถานะเป็นใช้
+      const updatQuery2 = `
+        UPDATE airconditioner SET
+        status = ?
+        WHERE air_ID = ?
+      `;
+      await db.promise().query(updatQuery2, [statusairold, oldair]);
+
+
+      } else {
+        //ถ้าไม่มีข้อมูลให้เพิ่ม เเล้วเปลี่ยน statusa เเอร์
+        const insertQuery = `
+          INSERT INTO roomair (room_ID, air_ID)
+          VALUES (?, ?);
+        `;
+        await db.promise().query(insertQuery, [roomID, selectAir]);
+
+        const statusair = "STA000025"; //เปลี่ยนสถานะเป็นใช้
+          const updatQuery3 = `
+            UPDATE airconditioner SET
+            status = ?
+            WHERE air_ID = ?
+          `;
+          await db.promise().query(updatQuery3, [statusair, selectAir]);
+      }
+    }
+
+    if (roomtype === "RTY000002") {
+      const deleteQuery = `
+        DELETE FROM roomair
+        WHERE room_ID = ?;
+      `;
+      await db.promise().query(deleteQuery, [roomID]);
+      const statusair = "STA000026"; //เปลี่ยนสถานะเป็นไม่ใช้
+          const insertQuery3 = `
+            UPDATE airconditioner SET
+            status = ?
+            WHERE air_ID = ?
+          `;
+          await db.promise().query(insertQuery3, [statusair, selectAir]);
+    }
+    
+
+
   } catch (err) {
     console.error("เกิดข้อผิดพลาด:", err);
     res.status(500).json({ error: "เกิดข้อผิดพลาดในการดำเนินการ" });
@@ -194,6 +358,26 @@ const updateRoomStatus = async (req, res) => {
 
     const updateQuery = "UPDATE room SET room_status_ID = ? WHERE room_ID = ?";
     await db.promise().query(updateQuery, [room_status_ID, roomID]);
+    
+    const checkQuery = `
+        SELECT air_ID
+        FROM roomair
+        WHERE room_ID = ?;
+      `;
+      const [result] = await db.promise().query(checkQuery, [roomID]);
+      const selectAir = result[0].air_ID;
+    const deleteQuery = `
+        DELETE FROM roomair
+        WHERE room_ID = ?;
+      `;
+      await db.promise().query(deleteQuery, [roomID]);
+      const statusair = "STA000026"; //เปลี่ยนสถานะเป็นไม่ใช้
+          const insertQuery3 = `
+            UPDATE airconditioner SET
+            status = ?
+            WHERE air_ID = ?
+          `;
+          await db.promise().query(insertQuery3, [statusair, selectAir]);
 
     res.status(200).json({ message: "อัปเดตสถานะของห้องพักเรียบร้อยแล้ว" });
   } catch (err) {

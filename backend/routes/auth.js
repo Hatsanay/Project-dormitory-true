@@ -66,6 +66,7 @@ const {
   getMacForShc,
   getReqwaitForShc,
   assignWork,
+  getTechnicianAppointments,
 } = require("../controllers/TimeReqControler");
 
 const {
@@ -159,6 +160,37 @@ const {
 
 } = require("../controllers/patitionTypeController");
 
+//new-------------------------------------------------------------------
+const {
+  registerFloor,
+  getFloor,
+  getFloorByID,
+  getAutotidFloor,
+  updateFloor,
+  updateStatusFloor,
+  getDeletableFloors
+
+} = require("../controllers/floorController");
+
+const {
+  registerRoomType,
+  getRoomType,
+  getRoomTypeByID,
+  getAutotidRoomType,
+  updateRoomType,
+  updateStatusRoomType,
+  getDeletableRoomTypes
+} = require("../controllers/roomtypeController");
+
+const {
+  registerAirconditioner,
+  getAirconditioner,
+  getAirconditionerByID,
+  getAutotidAirconditioner,
+  updateAirconditioner,
+  updateStatusAirconditioner,
+  getDeletableAirconditioners
+} = require("../controllers/AirController");
 
 
 // getUserByIdfromReq
@@ -216,6 +248,7 @@ router.get("/getreqTimeLine", authenticateToken, getreqTimeLine);
 router.get("/getreqtime", authenticateToken, getreqtime);
 router.get("/getMacForShc", authenticateToken, getMacForShc);
 router.get("/getReqwaitForShc", authenticateToken, getReqwaitForShc);
+router.get("/getTechnicianAppointments", authenticateToken, getTechnicianAppointments);
 
 router.put("/updateUser", authenticateToken, updateUser);
 router.put("/updateUserStatus", authenticateToken, updateUserStatus);
@@ -241,7 +274,8 @@ router.post("/registerStock", authenticateToken, registerStock);
 router.post("/registerTypeStock", authenticateToken, registerTypeStock);
 router.post("/registerRole", authenticateToken, registerRole); //
 router.post("/registerRenting", authenticateToken, registerRenting); //
-router.post("/registerPetitionType", authenticateToken, registerPetitionType); //new
+router.post("/registerPetitionType", authenticateToken, registerPetitionType); //
+router.post("/registerFloor", authenticateToken, registerFloor); //new
 
 router.get("/getAutotidRoom", authenticateToken, getAutotidRoom);
 router.get("/getRoom", authenticateToken, getRoom);
@@ -295,6 +329,15 @@ router.get("/getPetitionTypeForView", authenticateToken, getPetitionTypeForView)
 router.get("/getPetitionTypeByID", authenticateToken, getPetitionTypeByID); //new
 router.get("/getAutotidPetitionType", authenticateToken, getAutotidPetitionType); //new
 router.get("/getDeletablePetitionTypes", authenticateToken, getDeletablePetitionTypes); //new
+
+router.get("/getFloor", authenticateToken, getFloor); //new
+router.get("/getFloorByID", authenticateToken, getFloorByID); //new
+
+router.get("/getRoomType", authenticateToken, getRoomType); //new
+router.get("/getRoomTypeByID", authenticateToken, getRoomTypeByID); //new
+
+router.get("/getAirconditioner", authenticateToken, getAirconditioner); //new
+router.get("/getAirconditionerByID", authenticateToken, getAirconditionerByID); //new
 
 
 router.put("/updateRoom", authenticateToken, updateRoom);

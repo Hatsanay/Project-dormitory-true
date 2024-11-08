@@ -555,7 +555,7 @@ export default {
                 window.location.reload();
               });
               console.log('requisitionID:', requisitionID);
-console.log('mainr_ID:', mainr_ID);
+              console.log('mainr_ID:', mainr_ID);
 
 
           closeModelDetailRequest();
@@ -640,7 +640,7 @@ const switchTab = (tab) => {
 
   if (tab === "2") {
     fetchReqWithdraw();
-  } else {
+  } else if(tab === "1") {
     fetchRequisition();
   }
 };

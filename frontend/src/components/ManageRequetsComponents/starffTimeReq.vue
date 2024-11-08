@@ -15,6 +15,17 @@
       <li class="nav-item">
         <a
           class="nav-link"
+          :class="{ active: activeTab === '3' }"
+          @click.prevent="switchTab('3')"
+          href="#"
+        >
+          <i class="fa-solid fa-clock-rotate-left"></i>
+          ปฎิทินเวลาว่างของช่าง
+        </a>
+      </li>
+      <li class="nav-item">
+        <a
+          class="nav-link"
           :class="{ active: activeTab === '2' }"
           @click.prevent="switchTab('2')"
           href="#"
@@ -23,17 +34,7 @@
           นัดเวลาซ่อม
         </a>
       </li>
-      <!-- <li class="nav-item">
-        <a
-          class="nav-link"
-          :class="{ active: activeTab === '3' }"
-          @click.prevent="switchTab('3')"
-          href="#"
-        >
-          <i class="fa-solid fa-clock-rotate-left"></i>
-          ประวัติการนัดเวลา
-        </a>
-      </li> -->
+    
     </ul>
 
     <div class="tab-content mt-3">
@@ -153,7 +154,33 @@
           </div>
         </div>
       </div>
-      <div v-if="activeTab === '3'" class="tab-pane active">ฟีเจอร์กำลังพัฒนา</div>
+      <div v-if="activeTab === '3'" class="tab-pane active">
+        <CRows>
+          <CFormSelect
+            v-model="selectedTechnicianIDTab3"
+            @change="fetchTechnicianTab3"
+            aria-label="เลือกช่าง"
+          >
+            <option value="">กรุณาเลือกช่าง</option>
+            <option
+              v-for="technician in technicians"
+              :key="technician.user_ID"
+              :value="technician.user_ID"
+            >
+              {{ technician.fullname }}
+            </option>
+          </CFormSelect>
+          <br />
+        </CRows>
+        <CRows>
+          <FullCalendar
+            :events="availableTimesTab3"
+            :options="availabilityCalendarOptions"
+            ref="availabilityCalendarTab3"
+            :key="selectedTechnicianIDTab3"
+          />
+        </CRows>
+      </div>
     </div>
 
     <CModal
@@ -305,11 +332,22 @@
 </template>
 
 <script>
-import { ref, onMounted, watchEffect, computed } from "vue";
+import { ref, onMounted, watchEffect, computed, watch } from "vue";
 import FullCalendar from "@fullcalendar/vue3";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
+import {
+  CFormSelect,
+  CButton,
+  CRow,
+  CCol,
+  CModal,
+  CModalHeader,
+  CModalBody,
+  CModalFooter,
+  CModalTitle,
+} from "@coreui/vue";
 import axios from "axios";
 import Swal from "sweetalert2";
 
@@ -340,6 +378,10 @@ export default {
     const selectedRepair = ref("");
     const startTime = ref("");
     const endTime = ref("");
+    const someValue = ref("");
+
+    const selectedTechnicianIDTab3 = ref(""); // ตัวแปรเก็บ ID ของช่างใน Tab 3
+    const availableTimesTab3 = ref([]); // ตัวแปรเก็บเวลาว่างของช่างใน Tab 3
 
     const calendarOptions = ref({
       plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
@@ -442,13 +484,11 @@ export default {
       try {
         const token = localStorage.getItem("token");
         const response = await axios.get("/api/auth/getMacForShc", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         });
         technicians.value = response.data;
       } catch (error) {
-        console.error("เกิดข้อผิดพลาดในการดึงข้อมูล role:", error);
+        console.error("เกิดข้อผิดพลาดในการดึงข้อมูลช่าง:", error);
       }
     };
 
@@ -514,6 +554,7 @@ export default {
         !startTime.value ||
         !endTime.value
       ) {
+        // แจ้งเตือนเมื่อข้อมูลไม่ครบถ้วน
         Swal.fire({
           icon: "warning",
           title: "กรุณากรอกข้อมูลให้ครบถ้วน",
@@ -533,7 +574,7 @@ export default {
       };
 
       try {
-        await axios.post("/api/auth/assignWork", assignmentData);
+        const response = await axios.post("/api/auth/assignWork", assignmentData);
         Swal.fire({
           icon: "success",
           title: "มอบหมายงานสำเร็จ",
@@ -545,12 +586,23 @@ export default {
         closeModal();
       } catch (error) {
         console.error("เกิดข้อผิดพลาดในการมอบหมายงาน:", error);
-        Swal.fire({
-          icon: "error",
-          title: "เกิดข้อผิดพลาด",
-          text: "ไม่สามารถบันทึกข้อมูลได้",
-          confirmButtonText: "ตกลง",
-        });
+        if (error.response && error.response.data.error) {
+          // แจ้งเตือนเมื่อพบการทับซ้อนของเวลานัดหมาย
+          Swal.fire({
+            icon: "error",
+            title: "เกิดข้อผิดพลาด",
+            text: error.response.data.error,
+            confirmButtonText: "ตกลง",
+          });
+        } else {
+          // แจ้งเตือนทั่วไปหากมีข้อผิดพลาดในการบันทึกข้อมูล
+          Swal.fire({
+            icon: "error",
+            title: "เกิดข้อผิดพลาด",
+            text: "ไม่สามารถบันทึกข้อมูลได้",
+            confirmButtonText: "ตกลง",
+          });
+        }
       }
     };
 
@@ -581,12 +633,95 @@ export default {
       // return `https://manageserver.dktimeh.com/uploads/${path}`; //hosting
     };
 
+    // ฟังก์ชันดึงเวลาว่างของช่างในแท็บ 3
+    const fetchTechnicianTab3 = async () => {
+  if (!selectedTechnicianIDTab3.value) {
+    availableTimesTab3.value = [];
+    return;
+  }
+
+  try {
+    const token = localStorage.getItem("token");
+    const response = await axios.get(
+      `/api/auth/getTechnicianAppointments?technicianID=${selectedTechnicianIDTab3.value}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    // เก็บช่วงเวลาที่ไม่ว่าง
+    const unavailableTimes = response.data.map((appointment) => ({
+      start: new Date(appointment.start),
+      end: new Date(appointment.end),
+      color: "#dc3545", // สีแดงสำหรับเวลาที่ไม่ว่าง
+      title: "ไม่ว่าง",
+    }));
+
+    const availableTimes = [];
+    const today = new Date();
+    const daysInWeek = 30;
+
+    // ลูปในแต่ละวันของสัปดาห์นี้
+    for (let i = 0; i < daysInWeek; i++) {
+      const day = new Date(today);
+      day.setDate(today.getDate() + i);
+
+      for (let hour = 6; hour < 20; hour++) {
+        const startHour = new Date(day);
+        startHour.setHours(hour, 0, 0, 0);
+
+        const endHour = new Date(day);
+        endHour.setHours(hour + 1, 0, 0, 0);
+
+        // ตรวจสอบว่าช่วงเวลานี้ไม่ว่างหรือไม่
+        const isUnavailable = unavailableTimes.some(
+          (unavailable) =>
+            startHour >= unavailable.start && startHour < unavailable.end
+        );
+
+        if (!isUnavailable) {
+          availableTimes.push({
+            title: "ว่าง",
+            start: startHour.toISOString(),
+            end: endHour.toISOString(),
+            color: "#28a745", // สีเขียวสำหรับเวลาที่ว่าง
+          });
+        }
+      }
+    }
+
+    // รวมเวลาว่างและไม่ว่างทั้งหมดใน `availableTimesTab3`
+    availableTimesTab3.value = [...unavailableTimes, ...availableTimes];
+  } catch (error) {
+    console.error("Error fetching availability for Tab 3:", error);
+  }
+};
+
+
+    watch(selectedTechnicianIDTab3, fetchTechnicianTab3);
+
+    // การตั้งค่า FullCalendar สำหรับแท็บ 3
+    const availabilityCalendarOptions = computed(() => ({
+      plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
+      initialView: "timeGridWeek",
+      headerToolbar: {
+        left: "prev,next today",
+        center: "title",
+        right: "dayGridMonth,timeGridWeek,timeGridDay",
+      },
+      editable: false,
+      selectable: false,
+      events: availableTimesTab3.value,
+    }));
+
     const switchTab = (tab) => {
       activeTab.value = tab;
     };
 
     watchEffect(() => {
       filterEvents();
+      availabilityCalendarOptions.value = {
+        ...availabilityCalendarOptions.value,
+        events: availableTimesTab3.value,
+      };
       calendarOptions.value.events = events.value;
     });
 
@@ -631,6 +766,12 @@ export default {
       startTime,
       endTime,
       assistantsWithNames,
+      availabilityCalendarOptions,
+      availableTimesTab3,
+      selectedTechnicianIDTab3,
+      fetchTechnicianTab3,
+      someValue,
+      technicians,
     };
   },
 };
